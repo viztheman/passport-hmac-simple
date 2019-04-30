@@ -1,17 +1,27 @@
 const chai = require('chai');
 const passport = require('chai-passport-strategy');
 const Strategy = require('../lib/strategy');
+const crypto = require('crypto');
 
 const TEST_USER = {};
 const TEST_INFO = {};
+const PUBLIC_KEY = '15c55efd-3648-4eb2-9e0d-fe8af47daaf4';
 const PRIVATE_KEY = 'e3ce629e-fdc5-4b49-a186-59fbf3f56262';
 const METHOD = 'GET';
 const ORIGINAL_URL = '/test?abc=1';
-const DATE = 'Thu, 06 Feb 1997 03:04:03 GMT';
-const AUTH_HEADER = 'restify-todo 01aaa33b-13d6-4eb4-8174-2e6d0d7b9da3:NzY4ZWVhN2JiYTcyZjVjMjkzNGM2ODFhN2MyMzg1NDI1YTFjMzU1OA==';
 
 const expect = chai.expect;
 chai.use(passport);
+
+function createAuthHeader() {
+    let date = new Date().toUTCString();
+    let sig = `${METHOD}\n${ORIGINAL_URL}\n${date}`;
+    let buf = Buffer.from(sig, 'utf-8');
+    let hash = crypto.createHmac('sha1', PRIVATE_KEY).update(sig).digest('hex');
+    let hash64 = Buffer.from(hash).toString('base64');
+
+    return `hmac ${PUBLIC_KEY}:${hash64}`;
+}
 
 describe('Strategy', () => {
     describe('authenticate', () => {
@@ -34,8 +44,8 @@ describe('Strategy', () => {
                             method: METHOD,
                             originalUrl: ORIGINAL_URL,
                             headers: {
-                                date: DATE,
-                                authorization: AUTH_HEADER
+                                date: new Date().toUTCString(),
+                                authorization: createAuthHeader()
                             }
                         });
                     })
