@@ -3,7 +3,7 @@ const passport = require('chai-passport-strategy');
 const Strategy = require('../lib/strategy');
 
 const ERROR_TEXT = 'boom';
-const AUTH_HEADER = 'restify-todo IjA3MDVkNWEyLWZhZWYtNDMwMi1iMjU3LThkYzliZjUyMjdhOTpZVGswWVRobVpUVmpZMkl4T1dKaE5qRmpOR013T0RjelpETTVNV1U1T0RjNU9ESm1ZbUprTXc9PSci';
+const AUTH_HEADER = 'restify-todo 0705d5a2-faef-4302-b257-8dc9bf5227a9:YTk0YThmZTVjY2IxOWJhNjFjNGMwODczZDM5MWU5ODc5O';
 
 const expect = chai.expect;
 chai.use(passport);

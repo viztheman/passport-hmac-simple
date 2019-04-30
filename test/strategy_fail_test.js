@@ -3,7 +3,7 @@ const Strategy = require('../lib/strategy');
 const passport = require('chai-passport-strategy');
 
 const BAD_AUTH_HEADER = 'XXXXXXXX';
-const GOOD_AUTH_HEADER = 'restify-todo IjA3MDVkNWEyLWZhZWYtNDMwMi1iMjU3LThkYzliZjUyMjdhOTpZVGswWVRobVpUVmpZMkl4T1dKaE5qRmpOR013T0RjelpETTVNV1U1T0RjNU9ESm1ZbUprTXc9PSci';
+const GOOD_AUTH_HEADER = 'restify-todo 0705d5a2-faef-4302-b257-8dc9bf5227a9:YTk0YThmZTVjY2IxOWJhNjFjNGMwODczZDM5MWU5ODc5ODJm';
 const BAD_REQUEST_MSG = 'kaboom';
 const BAD_PRIVATE_KEY = 'dc766700-892c-4c26-ac07-e00659304d7d';
 
