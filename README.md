@@ -34,10 +34,10 @@ InfoToSign doesn't have a lot of data points, but it _is_ called passport-hmac-_
 
 Some notes on the values being passed in:
 
-    * Keys can be whatever you want, though random generation (i.e. GUIDs) is _strongly_ encouraged.
-    * The Date header _is_ checked server side. One minute of drift in either direction is allowed. Otherwise, the message will be rejected.
-    * The public key only exists for looking up the associated private key on the server.
-    * `hmac` in the Authorization Header is just a convenience since it's not part of the spec. If you really want to, you can substitute for whatever you want. I won't judge.
+* Keys can be whatever you want, though random generation (i.e. GUIDs) is _strongly_ encouraged.
+* The Date header _is_ checked server side. One minute of drift in either direction is allowed. Otherwise, the message will be rejected.
+* The public key only exists for looking up the associated private key on the server.
+* `hmac` in the Authorization Header is just a convenience since it's not part of the spec. If you really want to, you can substitute for whatever you want. I won't judge.
 
 ## Sample Server Code
 
@@ -88,6 +88,6 @@ $.post({
 
 I may or may not get around to these based on demand. List will be updated as I come across new items.
 
-    * Customizable drift window
-    * Custom InfoToSign schemes
-    * HMAC-SHA256, etc. options
+* Customizable drift window
+* Custom InfoToSign schemes
+* HMAC-SHA256, etc. options
