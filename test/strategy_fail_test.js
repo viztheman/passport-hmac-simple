@@ -1,14 +1,44 @@
 const chai = require('chai');
 const Strategy = require('../lib/strategy');
 const passport = require('chai-passport-strategy');
+const crypto = require('crypto');
+
+const PUBLIC_KEY = 'cf2be2a2-87c2-43d5-bfba-feec32d92f07';
+const PRIVATE_KEY = '167b5582-997e-4314-bb2a-bbb6645dac4f';
 
 const BAD_AUTH_HEADER = 'XXXXXXXX';
-const GOOD_AUTH_HEADER = 'restify-todo 0705d5a2-faef-4302-b257-8dc9bf5227a9:YTk0YThmZTVjY2IxOWJhNjFjNGMwODczZDM5MWU5ODc5ODJm';
 const BAD_REQUEST_MSG = 'kaboom';
 const BAD_PRIVATE_KEY = 'dc766700-892c-4c26-ac07-e00659304d7d';
 
 const expect = chai.expect;
 chai.use(passport);
+
+function amendAuthReq(req) {
+    let timestamp = new Date();
+
+    req = Object.assign(req, {
+        method: 'GET',
+        originalUrl: '/test/failure?timestamp=' + timestamp.valueOf().toString(),
+        query: {}
+    });
+    req.query.timestamp = timestamp.valueOf().toString();
+    req.headers.authorization = createAuthHeader(req);
+    return req;
+}
+
+function createAuthHeader(req) {
+    let sig = [
+        req.method,
+        '',
+        '',
+        new Date(req.query.timestamp).toUTCString(),
+        req.originalUrl
+    ].join('\n');
+
+    let hash = crypto.createHmac('sha1', PRIVATE_KEY).update(sig).digest('hex');
+    let base64 = Buffer.from(hash).toString('base64');
+    return `hmac ${PUBLIC_KEY}:${base64}`;
+}
 
 describe('Strategy', () => {
     describe('authenticate', () => {
@@ -46,7 +76,7 @@ describe('Strategy', () => {
                         msg = m;
                         done();
                     })
-                    .req(req => req.headers.authorization = GOOD_AUTH_HEADER)
+                    .req(req => amendAuthReq(req))
                     .authenticate();
             });
 
@@ -69,7 +99,7 @@ describe('Strategy', () => {
                         msg = m;
                         done();
                     })
-                    .req(req => req.headers.authorization = GOOD_AUTH_HEADER)
+                    .req(req => amendAuthReq(req))
                     .authenticate();
             });
 
@@ -92,7 +122,7 @@ describe('Strategy', () => {
                         msg = m;
                         done();
                     })
-                    .req(req => req.headers.authorization = GOOD_AUTH_HEADER)
+                    .req(req => amendAuthReq(req))
                     .authenticate({badRequestMessage: BAD_REQUEST_MSG});
             });
 

@@ -3,19 +3,36 @@ const passport = require('chai-passport-strategy');
 const Strategy = require('../lib/strategy');
 const crypto = require('crypto');
 
-const TEST_USER = {};
-const TEST_INFO = {};
 const PUBLIC_KEY = '15c55efd-3648-4eb2-9e0d-fe8af47daaf4';
 const PRIVATE_KEY = 'e3ce629e-fdc5-4b49-a186-59fbf3f56262';
-const METHOD = 'GET';
-const ORIGINAL_URL = '/test?abc=1';
+
+const TEST_USER = {};
+const TEST_INFO = {};
 
 const expect = chai.expect;
 chai.use(passport);
 
-function createAuthHeader() {
-    let date = new Date().toUTCString();
-    let sig = `${METHOD}\n${ORIGINAL_URL}\n${date}`;
+function amendReq(req) {
+    let timestamp = new Date();
+    
+    req = Object.assign(req, {
+        method: 'GET',
+        originalUrl: '/test/abc?def=1&timestamp=' + timestamp.valueOf().toString(),
+        query: {}
+    });
+    req.query.timestamp = timestamp.valueOf().toString();
+    req.headers.authorization = createAuthHeader(req);
+}
+
+function createAuthHeader(req) {
+    let sig = [
+        req.method,
+        '',
+        '',
+        new Date(parseInt(req.query.timestamp)).toUTCString(),
+        req.originalUrl
+    ].join('\n');
+
     let buf = Buffer.from(sig, 'utf-8');
     let hash = crypto.createHmac('sha1', PRIVATE_KEY).update(sig).digest('hex');
     let hash64 = Buffer.from(hash).toString('base64');
@@ -39,16 +56,7 @@ describe('Strategy', () => {
                         info = i;
                         done();
                     })
-                    .req(req => {
-                        Object.assign(req, {
-                            method: METHOD,
-                            originalUrl: ORIGINAL_URL,
-                            headers: {
-                                date: new Date().toUTCString(),
-                                authorization: createAuthHeader()
-                            }
-                        });
-                    })
+                    .req(req => amendReq(req))
                     .authenticate();
             });
 
