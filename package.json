@@ -19,10 +19,12 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-passport-strategy": "^1.0.1",
+    "live-server": "^1.2.1",
     "mocha": "^6.1.4",
     "uuid": "^3.3.2"
   },
   "scripts": {
-    "test": "node_modules/.bin/mocha --report spec test/*_test.js"
+    "test": "node_modules/.bin/mocha --report spec test/*_test.js",
+    "test:browser": "live-server --port=9000 --mount=/:. browser/test/index.html"
   }
 }
