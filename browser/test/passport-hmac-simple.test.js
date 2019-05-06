@@ -5,22 +5,21 @@
     var PRIVATE_KEY = 'private';
 
     describe('Hmac', function() {
+        var hmac;
+
+        beforeEach(function(done) {
+            hmac = new Hmac(PUBLIC_KEY, PRIVATE_KEY);
+            done();
+        });
+
         describe('#constructor', function() {
             it('should set public and private keys', function() {
-                var hmac = new Hmac(PUBLIC_KEY, PRIVATE_KEY);
                 expect(hmac.publicKey).to.equal(PUBLIC_KEY);
                 expect(hmac.privateKey).to.equal(PRIVATE_KEY);
             });
         });
 
         describe('#createSig', function() {
-            var hmac;
-
-            beforeEach(function(done) {
-                hmac = new Hmac(PUBLIC_KEY, PRIVATE_KEY);
-                done();
-            });
-
             it('should add timestamp to sig', function() {
                 var timestamp = new Date();
 
@@ -30,8 +29,8 @@
                     url: '/test?abc=123'
                 };
 
-                let actualSig = hmac.createSig(info);
-                let timestampQuery = 'timestamp=' + timestamp.valueOf().toString();
+                var actualSig = hmac.createSig(info);
+                var timestampQuery = 'timestamp=' + timestamp.valueOf().toString();
                 expect(actualSig.indexOf(timestampQuery)).to.be.greaterThan(-1);
             });
 
@@ -78,6 +77,29 @@
 
                 expect(hmac.createSig(info)).to.equal(expectedSig);
             });
+        });
+
+        describe('#createAuthHeader', function() {
+            var RGX_VALID_AUTH_HEADER = new RegExp('^hmac ' + PUBLIC_KEY + ':');
+            var RGX_VALID_HASH = /^[0-9a-fA-F]+$/;
+
+            it('should generate valid signature', function() {
+                var header = hmac.createAuthHeader({
+                    method: 'GET',
+                    timestamp: new Date(),
+                    url: '/test'
+                });
+
+                expect(header).to.be.ok.and.match(RGX_VALID_AUTH_HEADER);
+
+                var passBase64 = header.split(':')[1];
+                var pass = passBase64 ? atob(passBase64) : '';
+                expect(pass).to.not.be.empty;
+                expect(pass).to.match(RGX_VALID_HASH);
+            });
+        });
+
+        describe('#sendQuery', function() {
         });
     });
 

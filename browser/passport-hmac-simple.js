@@ -33,7 +33,7 @@ var Hmac;
     };
 
     Hmac.prototype.createAuthHeader = function(info) {
-        return 'hmac ' + publicKey + ':' + this.createHash(info);
+        return 'hmac ' + this.publicKey + ':' + this.createHash(info);
     };
 
     Hmac.prototype.sendQuery = function(method, url, success, error) {
