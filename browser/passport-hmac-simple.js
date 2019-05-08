@@ -47,8 +47,8 @@ var Hmac;
             type: method,
             url: url,
             headers: {'Authorization': this.createAuthHeader(info)},
-            success,
-            error
+            success: success,
+            error: error
         });
     };
 

@@ -62,7 +62,7 @@
                 var info = {
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({a:1,b:2}),
+                    data: JSON.stringify({a:2,b:2}),
                     timestamp: timestamp,
                     url
                 };
@@ -70,7 +70,7 @@
                 var expectedSig = [
                     'POST',
                     'application/json',
-                    '{"a":1,"b":2}',
+                    '{"a":2,"b":2}',
                     timestamp.toUTCString(),
                     url + '?timestamp=' + timestamp.valueOf().toString()
                 ].join('\n');
@@ -100,6 +100,67 @@
         });
 
         describe('#sendQuery', function() {
+            var ajaxStub;
+
+            beforeEach(function() {
+                ajaxStub = sinon.stub($, 'ajax');
+            });
+
+            afterEach(function() {
+                ajaxStub.restore();
+            });
+
+            it('should send GET query successfully', function() {
+                var success = sinon.fake();
+                var error = sinon.fake();
+                hmac.sendQuery('GET', '/test.aspx', success, error);
+
+                expect(ajaxStub)
+                    .to.have.been.calledWithMatch({
+                        type: 'GET',
+                        url: '/test.aspx',
+                        success: success,
+                        error: error
+                    });
+
+                var options = ajaxStub.args[0][0];
+                expect(options).to.be.ok.and.include.keys('headers');
+                expect(options.headers).to.include.keys('Authorization');
+            });
+
+            it('should call success on success', function() {
+                var success = sinon.fake();
+                ajaxStub.callsFake(function() { success(); });
+
+                hmac.sendQuery('GET', '/test.aspx', success, sinon.fake());
+                expect(success).to.have.been.called;
+            });
+
+            it('should not call error on success', function() {
+                var success = sinon.fake();
+                var error = sinon.fake();
+                ajaxStub.callsFake(function() { success(); });
+
+                hmac.sendQuery('GET', '/test.aspx', success, error);
+                expect(error).to.not.have.been.called;
+            });
+
+            it('should call error on error', function() {
+                var error = sinon.fake();
+                ajaxStub.callsFake(function() { error(); });
+
+                hmac.sendQuery('GET', '/test.aspx', sinon.fake(), error);
+                expect(error).to.have.been.called;
+            });
+
+            it('should not call success on error', function() {
+                var success = sinon.fake();
+                var error = sinon.fake();
+                ajaxStub.callsFake(function() { error(); });
+
+                hmac.sendQuery('GET', '/test.aspx', success, error);
+                expect(success).to.not.have.been.called;
+            });
         });
     });
 
