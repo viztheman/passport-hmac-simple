@@ -12,28 +12,29 @@ var Hmac;
         this.privateKey = privateKey;
     };
 
-    Hmac.prototype.createSig = function(info) {
-        var url = info.url +
-            (info.url.indexOf('?') >= 0 ? '&' : '?') +
-            'timestamp=' + info.timestamp.valueOf().toString();
+    Hmac.prototype.createTimestampUrl = function(url, timestamp) {
+        return url +
+            (url.indexOf('?') >= 0 ? '&' : '?') +
+            'timestamp=' + timestamp.valueOf().toString();
+    };
 
+    Hmac.prototype.createSig = function(info) {
         return [
             info.method,
             info.contentType || '',
             info.data || '',
             info.timestamp.toUTCString(),
-            url
+            this.createTimestampUrl(info.url, info.timestamp)
         ].join('\n');
     };
 
     Hmac.prototype.createHash = function(info) {
         var sig = this.createSig(info);
-        var hash = CryptoJS.HmacSHA1(sig, this.privateKey);
-        return btoa(hash);
+        return CryptoJS.HmacSHA1(sig, this.privateKey);
     };
 
     Hmac.prototype.createAuthHeader = function(info) {
-        return 'hmac ' + this.publicKey + ':' + this.createHash(info);
+        return 'hmac ' + this.publicKey + ':' + btoa(this.createHash(info));
     };
 
     Hmac.prototype.sendQuery = function(method, url, success, error) {
@@ -45,11 +46,13 @@ var Hmac;
 
         $.ajax({
             type: method,
-            url: url,
+            url: this.createTimestampUrl(info.url, info.timestamp),
             headers: {'Authorization': this.createAuthHeader(info)},
             success: success,
             error: error
         });
+        
+        return info.timestamp;
     };
 
     // Only JSON support (for now).
@@ -58,17 +61,21 @@ var Hmac;
             method: method,
             timestamp: new Date(),
             contentType: 'application/json',
-            body: JSON.stringify(body),
+            body: JSON.stringify(data),
             url: url
         };
 
         $.ajax({
             type: method,
-            url: url,
+            url: this.createTimestampUrl(info.url, info.timestamp),
             dataType: 'json',
             data: info.body,
-            headers: {'Authorization': this.createAuthHeader(info)}
+            headers: {'Authorization': this.createAuthHeader(info)},
+            success: success,
+            error: error
         });
+        
+        return info.timestamp;
     };
 
     Hmac.prototype.get = function(url, success, error) {
@@ -87,8 +94,8 @@ var Hmac;
         return this.sendBody('PATCH', url, data, success, error);
     };
 
-    Hmac.prototype.delete = function(url, data, success, error) {
-        return this.sendQuery('DELETE', url, data, success, error);
+    Hmac.prototype.delete = function(url, success, error) {
+        return this.sendQuery('DELETE', url, success, error);
     };
 
 })(jQuery, CryptoJS);
