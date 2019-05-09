@@ -7,6 +7,7 @@ const TIMESTAMP = Date.parse('1996-02-02 03:04:05 GMT');
 const GET_REQ = {
     method: 'GET',
     originalUrl: '/testing/test?a=1&b=2&timestamp=' + TIMESTAMP.valueOf().toString(),
+    headers: {},
     query: {timestamp: TIMESTAMP.valueOf().toString()}
 };
 const EXPECTED_GET_SIG = [
@@ -17,14 +18,17 @@ const EXPECTED_GET_SIG = [
     GET_REQ.originalUrl
 ].join('\n');
 
+const POST_REQ_BODY_DIGEST = '9e0bf104708effc55357dc36f9426ce7'
 const POST_REQ = {
     method: 'POST',
     originalUrl: '/testing/test?timestamp=' + TIMESTAMP.valueOf().toString(),
     body: {a: 1, b: 2, c: 3},
-    headers: {contentType: 'application/json'},
+    headers: {
+        contentType: 'application/json',
+        'Content-MD5': POST_REQ_BODY_DIGEST
+    },
     query: {timestamp: TIMESTAMP.valueOf().toString()}
 };
-const POST_REQ_BODY_DIGEST = 'e7ec4a8f2309bdd4c4c57cb2adfb79c91a293597';
 const EXPECTED_POST_SIG = [
     POST_REQ.method,
     POST_REQ.headers.contentType,

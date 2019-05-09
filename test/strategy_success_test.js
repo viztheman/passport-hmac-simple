@@ -5,6 +5,7 @@ const crypto = require('crypto');
 
 const PUBLIC_KEY = '15c55efd-3648-4eb2-9e0d-fe8af47daaf4';
 const PRIVATE_KEY = 'e3ce629e-fdc5-4b49-a186-59fbf3f56262';
+const DATA = {a: 1, b: 2};
 
 const TEST_USER = {};
 const TEST_INFO = {};
@@ -12,23 +13,44 @@ const TEST_INFO = {};
 const expect = chai.expect;
 chai.use(passport);
 
-function amendReq(req) {
+function amendReq(req, data) {
     let timestamp = new Date();
-    
-    req = Object.assign(req, {
+    let originalUrl = '/test/abc?def=1&timestamp=' + timestamp.valueOf().toString();
+
+    let newInfo = {
         method: 'GET',
-        originalUrl: '/test/abc?def=1&timestamp=' + timestamp.valueOf().toString(),
+        originalUrl,
         query: {}
-    });
+    };
+
+    if (!data) {
+        req = Object.assign(req, {
+            method: 'GET',
+            originalUrl,
+            query: {}
+        });
+    }
+    else {
+        req = Object.assign(req, {
+            method: 'POST',
+            originalUrl,
+            query: {},
+            body: JSON.stringify(DATA)
+        });
+        req.headers.contentType = 'application/json';
+        req.headers['Content-MD5'] = crypto.createHash('md5').update(req.body).digest('hex');
+    }
+
     req.query.timestamp = timestamp.valueOf().toString();
     req.headers.authorization = createAuthHeader(req);
+    return req;
 }
 
 function createAuthHeader(req) {
     let sig = [
         req.method,
-        '',
-        '',
+        req.headers.contentType || '',
+        req.headers['Content-MD5'] || '',
         new Date(parseInt(req.query.timestamp)).toUTCString(),
         req.originalUrl
     ].join('\n');
@@ -42,7 +64,7 @@ function createAuthHeader(req) {
 
 describe('Strategy', () => {
     describe('authenticate', () => {
-        describe('Successful login', () => {
+        describe('Successful login on GET', () => {
             var user, info;
 
             const strategy = new Strategy(function(pk, done) {
@@ -57,6 +79,30 @@ describe('Strategy', () => {
                         done();
                     })
                     .req(req => amendReq(req))
+                    .authenticate();
+            });
+
+            it('should call this.success with user and info', () => {
+                expect(user).to.equal(TEST_USER);
+                expect(info).to.equal(TEST_INFO);
+            });
+        });
+
+        describe('Successful login on POST', () => {
+            var user, info;
+
+            const strategy = new Strategy(function(pk, done) {
+                done(null, TEST_USER, PRIVATE_KEY, TEST_INFO);
+            });
+
+            before(function(done) {
+                chai.passport.use(strategy)
+                    .success((u, i) => {
+                        user = u;
+                        info = i;
+                        done();
+                    })
+                    .req(req => amendReq(req, DATA))
                     .authenticate();
             });
 

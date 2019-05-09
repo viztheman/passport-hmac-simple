@@ -37,7 +37,7 @@ var Hmac;
         return 'hmac ' + this.publicKey + ':' + btoa(this.createHash(info));
     };
 
-    Hmac.prototype.sendQuery = function(method, url, success, error) {
+    Hmac.prototype.sendQueryAndReturnTimestamp = function(method, url, success, error) {
         var info = {
             method: method,
             timestamp: new Date(),
@@ -45,7 +45,7 @@ var Hmac;
         };
 
         $.ajax({
-            type: method,
+            type: info.method,
             url: this.createTimestampUrl(info.url, info.timestamp),
             headers: {'Authorization': this.createAuthHeader(info)},
             success: success,
@@ -56,12 +56,12 @@ var Hmac;
     };
 
     // Only JSON support (for now).
-    Hmac.prototype.sendBody = function(method, url, data, success, error) {
+    Hmac.prototype.sendBodyAndReturnTimestamp = function(method, url, data, success, error) {
         var info = {
             method: method,
-            timestamp: new Date(),
             contentType: 'application/json',
             body: JSON.stringify(data),
+            timestamp: new Date(),
             url: url
         };
 
@@ -79,23 +79,23 @@ var Hmac;
     };
 
     Hmac.prototype.get = function(url, success, error) {
-        return this.sendQuery('GET', url, success, error);
+        return this.sendQueryAndReturnTimestamp('GET', url, success, error);
     };
 
     Hmac.prototype.post = function(url, data, success, error) {
-        return this.sendBody('POST', url, data, success, error);
+        return this.sendBodyAndReturnTimestamp('POST', url, data, success, error);
     };
 
     Hmac.prototype.put = function(url, data, success, error) {
-        return this.sendBody('PUT', url, data, success, error);
+        return this.sendBodyAndReturnTimestamp('PUT', url, data, success, error);
     };
 
     Hmac.prototype.patch = function(url, data, success, error) {
-        return this.sendBody('PATCH', url, data, success, error);
+        return this.sendBodyAndReturnTimestamp('PATCH', url, data, success, error);
     };
 
     Hmac.prototype.delete = function(url, success, error) {
-        return this.sendQuery('DELETE', url, success, error);
+        return this.sendQueryAndReturnTimestamp('DELETE', url, success, error);
     };
 
 })(jQuery, CryptoJS);
