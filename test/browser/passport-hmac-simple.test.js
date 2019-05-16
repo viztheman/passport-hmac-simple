@@ -1,9 +1,5 @@
-(function(expect, Hmac) {
+(function(expect, Hmac, CryptoJS) {
     'use strict';
-
-    var PUBLIC_KEY = 'public';
-    var PRIVATE_KEY = 'private';
-    var RGX_VALID_HASH = /^[0-9a-fA-F]+$/;
 
     describe('Hmac', function() {
         var hmac;
@@ -24,59 +20,42 @@
             it('should add timestamp to sig', function() {
                 var timestamp = new Date();
 
-                var info = {
+                var actualSig = hmac.createSig({
                     method: 'GET',
                     timestamp: timestamp,
-                    url: '/test?abc=123'
-                };
+                    url: TEST_URL
+                });
 
-                var actualSig = hmac.createSig(info);
                 var timestampQuery = 'timestamp=' + timestamp.valueOf().toString();
                 expect(actualSig.indexOf(timestampQuery)).to.be.greaterThan(-1);
             });
 
             it('should generate GET sig', function() {
                 var timestamp = new Date();
-                var url = '/test/url';
+                var expectedSig = createGetSig(TEST_URL, timestamp);
 
-                var info = {
+                var actualSig = hmac.createSig({
                     method: 'GET',
                     timestamp: timestamp,
-                    url: url
-                };
+                    url: TEST_URL
+                });
 
-                var expectedSig = [
-                    'GET',
-                    '',
-                    '',
-                    timestamp.toUTCString(),
-                    url + '?timestamp=' + timestamp.valueOf().toString()
-                ].join('\n');
-
-                expect(hmac.createSig(info)).to.equal(expectedSig);
+                expect(actualSig).to.equal(expectedSig);
             });
 
             it('should generate POST sig', function() {
                 var timestamp = new Date();
-                var url = '/post/test';
+                var expectedSig = createPostSig(TEST_URL, timestamp, DATA);
 
-                var info = {
+                var actualSig = hmac.createSig({
                     method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({a:2,b:2}),
+                    url: TEST_URL,
                     timestamp: timestamp,
-                    url
-                };
+                    data: DATA,
+                    contentType: 'application/json'
+                });
                 
-                var expectedSig = [
-                    'POST',
-                    'application/json',
-                    '{"a":2,"b":2}',
-                    timestamp.toUTCString(),
-                    url + '?timestamp=' + timestamp.valueOf().toString()
-                ].join('\n');
-
-                expect(hmac.createSig(info)).to.equal(expectedSig);
+                expect(actualSig).to.equal(expectedSig);
             });
         });
 
@@ -92,59 +71,59 @@
             });
 
             it('should generate valid hash for GET', function() {
-                var info = {
-                    method: 'GET',
-                    timestamp: new Date(),
-                    url: '/testing/abc?q=1'
-                };
-                var sig = [
-                    info.method,
-                    '',
-                    '',
-                    info.timestamp.toUTCString(),
-                    info.url + '&timestamp=' + info.timestamp.valueOf().toString()
-                ].join('\n');
+                var timestamp = new Date();
+                var expectedSig = createGetSig(TEST_URL, timestamp);
 
-                var actualHash = hmac.createHash(info);
-                expect(hmacSha1Spy).to.have.been.calledWith(sig, PRIVATE_KEY);
+                var actualHash = hmac.createHash({
+                    method: 'GET',
+                    timestamp: timestamp,
+                    url: TEST_URL
+                });
+
+                expect(hmacSha1Spy).to.have.been.calledWith(expectedSig, PRIVATE_KEY);
                 expect(actualHash).to.match(RGX_VALID_HASH);
             });
 
             it('should generate valid hash for POST', function() {
-                var info = {
+                var timestamp = new Date();
+                var expectedSig = createPostSig(TEST_URL, timestamp, DATA);
+
+                var actualHash = hmac.createHash({
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({x: 'abc', b: 2}),
-                    timestamp: new Date(),
-                    url: '/postTest'
-                };
-                var sig = [
-                    info.method,
-                    info.contentType,
-                    info.data,
-                    info.timestamp.toUTCString(),
-                    info.url + '?timestamp=' + info.timestamp.valueOf().toString()
-                ].join('\n');
+                    data: DATA,
+                    timestamp: timestamp,
+                    url: TEST_URL
+                });
 
-                var actualHash = hmac.createHash(info);
-                expect(hmacSha1Spy).to.have.been.calledWith(sig, PRIVATE_KEY);
+                expect(hmacSha1Spy).to.have.been.calledWith(expectedSig, PRIVATE_KEY);
                 expect(actualHash).to.match(RGX_VALID_HASH);
             });
         });
 
         describe('#createAuthHeader', function() {
-            var RGX_VALID_AUTH_HEADER = new RegExp('^hmac ' + PUBLIC_KEY + ':');
-
-            it('should generate valid signature', function() {
+            it('should generate valid auth header', function() {
                 var header = hmac.createAuthHeader({
                     method: 'GET',
                     timestamp: new Date(),
-                    url: '/test'
+                    url: TEST_URL
                 });
 
                 expect(header).to.be.ok.and.match(RGX_VALID_AUTH_HEADER);
+            });
 
-                var passBase64 = header.split(':')[1];
+            it('should encode hmac hash', function() {
+                var header = hmac.createAuthHeader({
+                    method: 'GET',
+                    timestamp: new Date(),
+                    url: TEST_URL
+                });
+                expect(header).to.be.ok;
+
+                var tokens = header.split(':');
+                expect(tokens.length).to.equal(2);
+
+                var passBase64 = tokens[1];
                 var pass = passBase64 ? atob(passBase64) : '';
                 expect(pass).to.not.be.empty;
                 expect(pass).to.match(RGX_VALID_HASH);
@@ -165,14 +144,16 @@
             it('should send GET query successfully', function() {
                 var success = sinon.fake();
                 var error = sinon.fake();
-                var timestamp = hmac.sendQuery('GET', '/test.aspx', success, error);
+                var timestamp = hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, error);
 
-                expect(ajaxStub) .to.have.been.calledWithMatch({
+                expect(ajaxStub).to.have.been.calledWithMatch({
                     type: 'GET',
-                    url: '/test.aspx?timestamp=' + timestamp.valueOf().toString(),
+                    url: stampUrl(TEST_URL, timestamp),
                     success: success,
                     error: error
                 });
+                expect(ajaxStub.args.length).to.be.greaterThan(0);
+                expect(ajaxStub.args[0].length).to.be.greaterThan(0);
 
                 var options = ajaxStub.args[0][0];
                 expect(options).to.be.ok.and.include.keys('headers');
@@ -183,7 +164,7 @@
                 var success = sinon.fake();
                 ajaxStub.callsFake(function() { success(); });
 
-                hmac.sendQuery('GET', '/test.aspx', success, sinon.fake());
+                hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, sinon.fake());
                 expect(success).to.have.been.called;
             });
 
@@ -192,7 +173,7 @@
                 var error = sinon.fake();
                 ajaxStub.callsFake(function() { success(); });
 
-                hmac.sendQuery('GET', '/test.aspx', success, error);
+                hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, error);
                 expect(error).to.not.have.been.called;
             });
 
@@ -200,7 +181,7 @@
                 var error = sinon.fake();
                 ajaxStub.callsFake(function() { error(); });
 
-                hmac.sendQuery('GET', '/test.aspx', sinon.fake(), error);
+                hmac.sendQueryReturnTimestamp('GET', TEST_URL, sinon.fake(), error);
                 expect(error).to.have.been.called;
             });
 
@@ -209,7 +190,7 @@
                 var error = sinon.fake();
                 ajaxStub.callsFake(function() { error(); });
 
-                hmac.sendQuery('GET', '/test.aspx', success, error);
+                hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, error);
                 expect(success).to.not.have.been.called;
             });
         });
@@ -228,16 +209,19 @@
             it('should send POST query successfully', function() {
                 var success = sinon.fake();
                 var error = sinon.fake();
-                var timestamp = hmac.sendBody('POST', '/test.aspx', {a:1, b:2}, success, error);
+                var timestamp = hmac.sendBodyReturnTimestamp('POST', TEST_URL, DATA, success, error);
 
                 expect(ajaxStub).to.have.been.calledWithMatch({
                     type: 'POST',
-                    url: '/test.aspx?timestamp=' + timestamp.valueOf().toString(),
+                    url: stampUrl(TEST_URL, timestamp),
                     dataType: 'json',
-                    data: JSON.stringify({a:1, b:2}),
+                    data: JSON.stringify(DATA),
                     success: success,
                     error: error
                 });
+
+                expect(ajaxStub.args.length).to.be.greaterThan(0);
+                expect(ajaxStub.args[0].length).to.be.greaterThan(0);
 
                 var options = ajaxStub.args[0][0];
                 expect(options).to.be.ok.and.include.keys('headers');
@@ -245,7 +229,7 @@
             });
 
             it('should return timestamp after call', function() {
-                var timestamp = hmac.sendBody('POST', '/test.aspx', {}, sinon.fake(), sinon.fake());
+                var timestamp = hmac.sendBodyReturnTimestamp('POST', TEST_URL, {}, sinon.fake(), sinon.fake());
                 expect(timestamp).to.be.ok.and.instanceOf(Date);
             });
 
@@ -253,7 +237,7 @@
                 var success = sinon.fake();
                 ajaxStub.callsFake(function() { success(); });
 
-                hmac.sendBody('POST', '/test.aspx', {}, success, sinon.fake());
+                hmac.sendBodyReturnTimestamp('POST', TEST_URL, {}, success, sinon.fake());
                 expect(success).to.have.been.called;
             });
 
@@ -262,7 +246,7 @@
                 var error = sinon.fake();
                 ajaxStub.callsFake(function() { success(); });
 
-                hmac.sendQuery('POST', '/test.aspx', {}, success, error);
+                hmac.sendQueryReturnTimestamp('POST', TEST_URL, {}, success, error);
                 expect(error).to.not.have.been.called;
             });
 
@@ -270,7 +254,7 @@
                 var error = sinon.fake();
                 ajaxStub.callsFake(function() { error(); });
 
-                hmac.sendQuery('POST', '/test.aspx', {}, sinon.fake(), error);
+                hmac.sendQueryReturnTimestamp('POST', TEST_URL, {}, sinon.fake(), error);
                 expect(error).to.have.been.called;
             });
 
@@ -279,62 +263,71 @@
                 var error = sinon.fake();
                 ajaxStub.callsFake(function() { error(); });
 
-                hmac.sendQuery('POST', '/test.aspx', {}, success, error);
+                hmac.sendQueryReturnTimestamp('POST', TEST_URL, {}, success, error);
                 expect(success).to.not.have.been.called;
             });
         });
 
         describe('macro functions', function() {
-            var sendQueryStub, sendBodyStub;
+            describe('sendQueryReturnTimestamp', function() {
+                var sendQueryStub;
 
-            beforeEach(function() {
-                sendQueryStub = sinon.stub(hmac, 'sendQuery');
-                sendBodyStub = sinon.stub(hmac, 'sendBody');
+                beforeEach(function() {
+                    sendQueryStub = sinon.stub(hmac, 'sendQueryReturnTimestamp');
+                });
+
+                afterEach(function() {
+                    sendQueryStub.restore();
+                });
+
+                it('should call sendQuery properly on GET', function() {
+                    var success = sinon.fake();
+                    var error = sinon.fake();
+                    hmac.get(TEST_URL, success, error);
+                    expect(sendQueryStub).to.have.been.calledWith('GET', TEST_URL, success, error);
+                });
+
+                it('should call sendQuery properly on DELETE', function() {
+                    var success = sinon.fake();
+                    var error = sinon.fake();
+                    hmac.delete(TEST_URL, success, error);
+                    expect(sendQueryStub).to.have.been.calledWith('DELETE', TEST_URL, success, error);
+                });
             });
 
-            afterEach(function() {
-                sendQueryStub.restore();
-                sendBodyStub.restore();
-            });
+            describe('sendBodyReturnTimestamp', function() {
+                var sendBodyStub;
 
-            it('should call sendQuery properly on GET', function() {
-                var success = sinon.fake();
-                var error = sinon.fake();
-                hmac.get('/test', success, error);
-                expect(sendQueryStub).to.have.been.calledWith('GET', '/test', success, error);
-            });
+                beforeEach(function() {
+                    sendBodyStub = sinon.stub(hmac, 'sendBodyReturnTimestamp');
+                });
 
-            it('should call sendBody properly on POST', function() {
-                var data = {a:1};
-                var success = sinon.fake();
-                var error = sinon.fake();
-                hmac.post('/test', data, success, error);
-                expect(sendBodyStub).to.have.been.calledWith('POST', '/test', data, success, error);
-            });
+                afterEach(function() {
+                    sendBodyStub.restore();
+                });
 
-            it('should call sendBody properly on PUT', function() {
-                var data = {a:1};
-                var success = sinon.fake();
-                var error = sinon.fake();
-                hmac.put('/test', data, success, error);
-                expect(sendBodyStub).to.have.been.calledWith('PUT', '/test', data, success, error);
-            });
+                it('should call sendBody properly on POST', function() {
+                    var success = sinon.fake();
+                    var error = sinon.fake();
+                    hmac.post(TEST_URL, DATA, success, error);
+                    expect(sendBodyStub).to.have.been.calledWith('POST', TEST_URL, DATA, success, error);
+                });
 
-            it('should call sendBody properly on PATCH', function() {
-                var data = {a:1};
-                var success = sinon.fake();
-                var error = sinon.fake();
-                hmac.patch('/test', data, success, error);
-                expect(sendBodyStub).to.have.been.calledWith('PATCH', '/test', data, success, error);
-            });
+                it('should call sendBody properly on PUT', function() {
+                    var success = sinon.fake();
+                    var error = sinon.fake();
+                    hmac.put(TEST_URL, DATA, success, error);
+                    expect(sendBodyStub).to.have.been.calledWith('PUT', TEST_URL, DATA, success, error);
+                });
 
-            it('should call sendQuery properly on DELETE', function() {
-                var success = sinon.fake();
-                var error = sinon.fake();
-                hmac.delete('/test', success, error);
-                expect(sendQueryStub).to.have.been.calledWith('DELETE', '/test', success, error);
+                it('should call sendBody properly on PATCH', function() {
+                    var success = sinon.fake();
+                    var error = sinon.fake();
+                    hmac.patch(TEST_URL, DATA, success, error);
+                    expect(sendBodyStub).to.have.been.calledWith('PATCH', TEST_URL, DATA, success, error);
+                });
             });
         });
     });
 
-})(expect, Hmac);
+})(expect, Hmac, CryptoJS);

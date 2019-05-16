@@ -19,10 +19,17 @@ var Hmac;
     };
 
     Hmac.prototype.createSig = function(info) {
+        var contentMd5 = '';
+
+        if (info.data) {
+            var body = JSON.stringify(info.data);
+            contentMd5 = CryptoJS.MD5(body);
+        }
+
         return [
             info.method,
             info.contentType || '',
-            info.data || '',
+            contentMd5,
             info.timestamp.toUTCString(),
             this.createTimestampUrl(info.url, info.timestamp)
         ].join('\n');
@@ -37,7 +44,7 @@ var Hmac;
         return 'hmac ' + this.publicKey + ':' + btoa(this.createHash(info));
     };
 
-    Hmac.prototype.sendQueryAndReturnTimestamp = function(method, url, success, error) {
+    Hmac.prototype.sendQueryReturnTimestamp = function(method, url, success, error) {
         var info = {
             method: method,
             timestamp: new Date(),
@@ -56,7 +63,7 @@ var Hmac;
     };
 
     // Only JSON support (for now).
-    Hmac.prototype.sendBodyAndReturnTimestamp = function(method, url, data, success, error) {
+    Hmac.prototype.sendBodyReturnTimestamp = function(method, url, data, success, error) {
         var info = {
             method: method,
             contentType: 'application/json',
@@ -79,23 +86,23 @@ var Hmac;
     };
 
     Hmac.prototype.get = function(url, success, error) {
-        return this.sendQueryAndReturnTimestamp('GET', url, success, error);
+        return this.sendQueryReturnTimestamp('GET', url, success, error);
     };
 
     Hmac.prototype.post = function(url, data, success, error) {
-        return this.sendBodyAndReturnTimestamp('POST', url, data, success, error);
+        return this.sendBodyReturnTimestamp('POST', url, data, success, error);
     };
 
     Hmac.prototype.put = function(url, data, success, error) {
-        return this.sendBodyAndReturnTimestamp('PUT', url, data, success, error);
+        return this.sendBodyReturnTimestamp('PUT', url, data, success, error);
     };
 
     Hmac.prototype.patch = function(url, data, success, error) {
-        return this.sendBodyAndReturnTimestamp('PATCH', url, data, success, error);
+        return this.sendBodyReturnTimestamp('PATCH', url, data, success, error);
     };
 
     Hmac.prototype.delete = function(url, success, error) {
-        return this.sendQueryAndReturnTimestamp('DELETE', url, success, error);
+        return this.sendQueryReturnTimestamp('DELETE', url, success, error);
     };
 
 })(jQuery, CryptoJS);
