@@ -1,7 +1,7 @@
 # passport-hmac-simple
-Simple HMAC authentication for [Passport](https://passportjs.org) and [Node.js](https://nodejs.org).
+Simple HMAC authentication for [Passport](https://www.passportjs.org) and [Node.js](https://nodejs.org).
 
-Besides doing the proper hashing, it also uses timestamps to prevent replay attacks. `passReqToCallback` is also supported if you're into that sort of thing. I don't judge.
+Besides doing the proper hashing, it also uses timestamps to prevent replay attacks. `passReqToCallback` is supported if you're into that sort of thing. I don't judge.
 
 
 ## Sample Code
