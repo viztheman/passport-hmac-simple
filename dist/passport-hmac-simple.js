@@ -105,4 +105,8 @@ var Hmac;
         return this.sendQueryReturnTimestamp('DELETE', url, success, error);
     };
 
+    // For NodeJS compatibility
+    if (module && module.exports)
+        module.exports = Hmac;
+
 })(jQuery, CryptoJS);
