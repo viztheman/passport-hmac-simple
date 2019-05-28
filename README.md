@@ -16,7 +16,7 @@ Besides doing the proper hashing, it also uses timestamps to prevent replay atta
 
     passport.use(new HmacStrategy(async function(publicKey, done) {
         try {
-            let user = await User.find({publicKey});
+            let user = await User.findOne({publicKey});
 
             if (!user || !user.privateKey)
                 return done(null, false);
