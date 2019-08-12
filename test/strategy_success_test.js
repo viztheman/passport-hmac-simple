@@ -19,25 +19,26 @@ function amendReq(req, data) {
 
     let newInfo = {
         method: 'GET',
-        originalUrl,
+        href: () => originalUrl,
         query: {}
     };
 
     if (!data) {
         req = Object.assign(req, {
             method: 'GET',
-            originalUrl,
+            href: () => originalUrl,
             query: {}
         });
     }
     else {
         req = Object.assign(req, {
             method: 'POST',
-            originalUrl,
+            href: () => originalUrl,
             query: {},
-            body: JSON.stringify(DATA)
+            body: JSON.stringify(DATA),
+
         });
-        req.headers.contentType = 'application/json';
+        req.headers['content-type'] = 'application/json';
         req.headers['Content-MD5'] = crypto.createHash('md5').update(req.body).digest('hex');
     }
 
@@ -49,10 +50,10 @@ function amendReq(req, data) {
 function createAuthHeader(req) {
     let sig = [
         req.method,
-        req.headers.contentType || '',
+        req.headers['content-type'] || '',
         req.headers['Content-MD5'] || '',
         new Date(parseInt(req.query.timestamp)).toUTCString(),
-        req.originalUrl
+        req.href()
     ].join('\n');
 
     let buf = Buffer.from(sig, 'utf-8');
@@ -97,6 +98,10 @@ describe('Strategy', () => {
 
             before(function(done) {
                 chai.passport.use(strategy)
+                    .fail(e => {
+                        console.log(e);
+                        done(e);
+                    })
                     .success((u, i) => {
                         user = u;
                         info = i;

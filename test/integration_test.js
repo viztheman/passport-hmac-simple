@@ -13,15 +13,8 @@ const DATA = {a: 123, b: 'xyz'};
 function setUpClient() {
     global.CryptoJS = require('crypto-js');
     global.btoa = require('btoa');
-    global.Hmac = require('../dist/passport-hmac-simple.js');
-}
-
-function setUpJquery() {
-    console.log('Starting up JSDOM...');
-    const {JSDOM} = require('jsdom');
-    const {window} = new JSDOM();
-    console.log('Done.');
-    global.jQuery = global.$ = require('jquery')(window);
+    global.Hmac = require('../lib/Hmac.js');
+    global.fetch = require('node-fetch');
 }
 
 function setUpPassport() {
@@ -31,17 +24,14 @@ function setUpPassport() {
 }
 
 function sendSuccess(req, res, next) {
-    let success = user && user.success;
-
-    if (req.method !== 'GET' && req.method !== 'DELETE')
-        success = success && _.isEqual(res.body, DATA);
-
+    let success = req.user && req.user.success;
     res.json({success});
     next();
 }
 
 function createServer() {
     let server = restify.createServer();
+    server.use(restify.plugins.queryParser());
     server.use(restify.plugins.bodyParser());
     server.use(passport.initialize());
     server.get('/get', passport.authenticate('hmac', {session:false}), sendSuccess);
@@ -59,7 +49,7 @@ function createServer() {
 }
 
 function expectRunSuccess(data, done) {
-    expect(data).to.be.ok.and.to.deep.equal({success: true});
+    expect(data).to.have.property('success', true);
     done();
 }
 
@@ -69,6 +59,10 @@ function failFromError(done) {
 }
 
 function runClientTest(client, methodName, data, done) {
+    if (!done) {
+        done = data;
+        data = null;
+    }
     let method = client[methodName];
 
     let methodArgs = [
@@ -77,7 +71,7 @@ function runClientTest(client, methodName, data, done) {
         data => expectRunSuccess(data, done),
         () => failFromError(done)
     ];
-    if (!data) methodArgs.splice(1, 1)
+    if (!data) methodArgs.splice(1, 1);
 
     method.apply(client, methodArgs);
 }
@@ -88,7 +82,6 @@ describe('Integration Tests', function() {
     before(function() {
         this.timeout(30000);
         setUpPassport();
-        setUpJquery();
         setUpClient();
     });
 
@@ -119,6 +112,6 @@ describe('Integration Tests', function() {
     });
 
     it('should pass DELETE', function(done) {
-        runClientTest(client, 'delete', DATA, done);
+        runClientTest(client, 'delete', done);
     });
 });

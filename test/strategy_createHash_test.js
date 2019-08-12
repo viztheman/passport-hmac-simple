@@ -8,20 +8,20 @@ const PRIVATE_KEY = '5b1b2c1c-812e-429d-916c-cee953b4a0e5';
 
 const GET_REQ = {
     method: 'GET',
-    originalUrl: '/test/url?a=1&timestamp=' + TIMESTAMP.valueOf().toString(),
     query: {timestamp: TIMESTAMP.valueOf().toString()},
-    headers: {}
+    headers: {},
+    href: () => '/test/url?a=1&timestamp=' + TIMESTAMP.valueOf().toString()
 };
 const EXPECTED_GET_HMAC = '36b060029ae0f36751ee689cc06a0a1a13e5573c';
 
 
 const POST_REQ = {
     method: 'POST',
-    originalUrl: '/test/url?timestamp=' + TIMESTAMP.valueOf().toString(),
+    href: () => '/test/url?timestamp=' + TIMESTAMP.valueOf().toString(),
     body: {a: 1, b: 2},
     query: {timestamp: TIMESTAMP.valueOf().toString()},
     headers: {
-        contentType: 'application/json',
+        'content-type': 'application/json',
         'Content-MD5': '608de49a4600dbb5b173492759792e4a'
     }
 };

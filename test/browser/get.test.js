@@ -12,7 +12,7 @@
             var ajaxStub;
 
             beforeEach(function() {
-                ajaxStub = sinon.stub($, 'ajax');
+                ajaxStub = sinon.stub(window, 'fetch');
             });
 
             afterEach(function() {
@@ -22,54 +22,46 @@
             it('should send GET query successfully', function() {
                 var success = sinon.fake();
                 var error = sinon.fake();
+                ajaxStub.resolves({json: sinon.fake()});
+
                 var timestamp = hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, error);
+                
+                expect(ajaxStub).to.be.calledWithMatch(
+                    stampUrl(TEST_URL, timestamp),
+                    { method: 'GET' }
+                );
 
-                expect(ajaxStub).to.have.been.calledWithMatch({
-                    type: 'GET',
-                    url: stampUrl(TEST_URL, timestamp),
-                    success: success,
-                    error: error
-                });
-                expect(ajaxStub.args.length).to.be.greaterThan(0);
-                expect(ajaxStub.args[0].length).to.be.greaterThan(0);
-
-                var options = ajaxStub.args[0][0];
+                var options = ajaxStub.args[0][1];
                 expect(options).to.be.ok.and.include.keys('headers');
-                expect(options.headers).to.include.keys('Authorization');
+                expect(options.headers).to.have.property('Authorization');
             });
 
-            it('should call success on success', function() {
-                var success = sinon.fake();
-                ajaxStub.callsFake(function() { success(); });
+            it('should call success on success', function(done) {
+                ajaxStub.resolves({json: sinon.fake()});
 
-                hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, sinon.fake());
-                expect(success).to.have.been.called;
+                hmac.sendQueryReturnTimestamp(
+                    'GET',
+                    TEST_URL,
+                    done,
+                    function(e) {
+                        console.log(e.message);
+                        expect.fail('should have been successful');
+                    }
+                );
             });
 
-            it('should not call error on success', function() {
-                var success = sinon.fake();
-                var error = sinon.fake();
-                ajaxStub.callsFake(function() { success(); });
+            it('should call error on error', function(done) {
+                ajaxStub.rejects();
+                /*ajaxStub.returns(new Promise(function(res, rej) {
+                    rej('boom');
+                }));*/
 
-                hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, error);
-                expect(error).to.not.have.been.called;
-            });
-
-            it('should call error on error', function() {
-                var error = sinon.fake();
-                ajaxStub.callsFake(function() { error(); });
-
-                hmac.sendQueryReturnTimestamp('GET', TEST_URL, sinon.fake(), error);
-                expect(error).to.have.been.called;
-            });
-
-            it('should not call success on error', function() {
-                var success = sinon.fake();
-                var error = sinon.fake();
-                ajaxStub.callsFake(function() { error(); });
-
-                hmac.sendQueryReturnTimestamp('GET', TEST_URL, success, error);
-                expect(success).to.not.have.been.called;
+                hmac.sendQueryReturnTimestamp(
+                    'GET',
+                    TEST_URL,
+                    function() { expect.fail('should have errored'); },
+                    function() { done(); }
+                );
             });
         });
 

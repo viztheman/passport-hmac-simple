@@ -1,18 +1,21 @@
 # passport-hmac-simple
-Simple HMAC authentication for [Passport](https://www.passportjs.org) and [Node.js](https://nodejs.org).
+HMAC authentication for [Passport](https://www.passportjs.org) and [Node.js](https://nodejs.org), complete with client.
 
-Besides doing the proper hashing, it also uses timestamps to prevent replay attacks. `passReqToCallback` is supported if you're into that sort of thing. I don't judge.
+Besides doing the proper hashing, it also uses timestamps to prevent replay attacks.
 
+## Server
 
-## Sample Code
-
-### Server
-
+    // We use mongoose as an example, but feel free to store the user
+    // however you like.
+    //
+    // Example Schema: {publicKey: 'XXX', privateKey: 'YYY'}
+    //
     const User = require('mongoose').model('User');
+
     const passport = require('passport');
     const HmacStrategy = require('passport-hmac-simple').Strategy;
 
-    // Do the regular passport setup, then call...
+    // Do the regular passport initialization, then call...
 
     passport.use(new HmacStrategy(async function(publicKey, done) {
         try {
@@ -28,74 +31,81 @@ Besides doing the proper hashing, it also uses timestamps to prevent replay atta
         }
     }));
 
-    // ...then set up and use passport as normal.
+    // ...now, set up and use passport as normal.
 
-### Client
-Include [jQuery](https://jquery.com/), [CryptoJS](https://code.google.com/archive/p/crypto-js/), and `dist/passport-hmac-simple.js` on the page however you like.
+## Client
+The same client code should work for both Node.js require() and simple javascript tags.
 
-Note that `success` and `error` callbacks are passed straight into `$.ajax`, so you shouldn't have to do anything different than normal jQuery AJAX.
+### Node.js
 
-##### GET, DELETE
+    const Hmac = require('passport-hmac-simple').Hmac;
+
+### Javascript
+
+**You'll need Fetch API and [CryptoJS](https://code.google.com/archive/p/crypto-js/) in order to use the client browser side.** If your browser doesn't support Fetch API (cough cough IE), you'll need a (polyfill)[https://github.com/github/fetch].
+
+    <!-- Make this file to your page however you like. -->
+    <script src="passport-hmac-simple/lib/Hmac.js"></script>
+
+### GET, DELETE
 
     var PUBLIC_KEY = 'xyz123';
     var PRIVATE_KEY = 'Thisisasecret';
 
     var hmac = new Hmac(PUBLIC_KEY, PRIVATE_KEY);
 
-    // or: hmac.delete
-    hmac.get(
+    hmac.get(   // or: hmac.delete
         '/api/endpointUrl?id=123',
-        function success(data) { ... },
-        function error() { ... }
+        function success(json) { ... },
+        function error(err) { ... }
     );
 
-##### POST, PUT, PATCH
-`application/json` is used by default and is (currently?) the only method of postback supported.
+### POST, PUT, PATCH
 
     var PUBLIC_KEY = 'xyz123';
     var PRIVATE_KEY = 'Thisisasecret';
     var hmac = new Hmac(PUBLIC_KEY, PRIVATE_KEY);
 
-    // or: hmac.put, etc.
-    hmac.post(
+    
+    hmac.post(      // or: hmac.put, etc.
         '/api/endpointUrl',
-        {a: 1, b: 2},   // Pass the regular object, not the JSON string
-        function success(data) { ... },
-        function error() { ... }
+        {a: 1, b: 2},   // Pass the object, not the JSON string
+        function success(json) { ... },
+        function error(err) { ... }
     );
     
 ## Algorithm Pseudocode
 
-##### GET, DELETE
+You shouldn't need any of this to use the module, but it's here if you want it.
 
-    Full URL = Original URL + AddQueryString("timestamp", now.valueOf().toString())
+### GET, DELETE
+
+    Full URL = URL + AddQueryString("timestamp", now.valueOf().toString())
 
     InfoToSign = Method + "\n" +
         "\n" +
         "\n" +
         now.toUTCString() + "\n" +
-        Full URL
+        Path
 
     HMAC = HMAC-SHA1(InfoToSign as UTF-8, PrivateKey) To Hex
     base64HMAC = base64(HMAC)
     Authorization Header = "hmac PublicKey:base64HMAC"
 
-##### POST, PUT, PATCH
+### POST, PUT, PATCH
 
 Only `application/json` is currently accepted as a content type.
 
-`Content-MD5` is set solely through the HTTP header. It doesn't matter much if it's not right since the hash check will still fail.
+`Content-MD5` is set solely through the (similarly named) HTTP header. If it's wrong or missing, authentication will fail.
     
-    Full URL = Original URL + QueryString("timestamp", now.valueOf().toString())
+    Full URL = URL + QueryString("timestamp", now.valueOf().toString())
 
     InfoToSign = Method + "\n" +
         ContentType + "\n" +
         Content-MD5 + "\n" +
         now.toUTCString() +
-        Full URL
+        Path
 
     HMAC = HMAC-SHA1(InfoToSign, PrivateKey, UTF-8) To Hex
     base64HMAC = base64(HMAC)
     Authorization Header = "hmac PublicKey:base64HMAC"
-
-

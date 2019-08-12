@@ -12,7 +12,7 @@
             var ajaxStub;
 
             beforeEach(function() {
-                ajaxStub = sinon.stub($, 'ajax');
+                ajaxStub = sinon.stub(window, 'fetch');
             });
 
             afterEach(function() {
@@ -22,62 +22,53 @@
             it('should send POST query successfully', function() {
                 var success = sinon.fake();
                 var error = sinon.fake();
+                ajaxStub.resolves({json: sinon.fake()});
+
                 var timestamp = hmac.sendBodyReturnTimestamp('POST', TEST_URL, DATA, success, error);
 
-                expect(ajaxStub).to.have.been.calledWithMatch({
-                    type: 'POST',
-                    url: stampUrl(TEST_URL, timestamp),
-                    dataType: 'json',
-                    data: JSON.stringify(DATA),
-                    success: success,
-                    error: error
-                });
+                expect(ajaxStub).to.have.been.calledWithMatch(
+                    stampUrl(TEST_URL, timestamp),
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(DATA)
+                    }
+                );
 
-                expect(ajaxStub.args.length).to.be.greaterThan(0);
-                expect(ajaxStub.args[0].length).to.be.greaterThan(0);
-
-                var options = ajaxStub.args[0][0];
-                expect(options).to.be.ok.and.include.keys('headers');
-                expect(options.headers).to.include.keys('Authorization');
+                var options = ajaxStub.args[0][1];
+                expect(options).to.have.property('headers');
+                expect(options.headers).to.have.property('Authorization');
+                expect(options.headers).to.have.property('Content-Type');
             });
 
             it('should return timestamp after call', function() {
+                ajaxStub.resolves({json: sinon.fake()});
                 var timestamp = hmac.sendBodyReturnTimestamp('POST', TEST_URL, {}, sinon.fake(), sinon.fake());
                 expect(timestamp).to.be.ok.and.instanceOf(Date);
             });
 
-            it('should call success on success', function() {
+            it('should call success on success', function(done) {
                 var success = sinon.fake();
-                ajaxStub.callsFake(function() { success(); });
+                ajaxStub.resolves({json: sinon.fake()});
 
-                hmac.sendBodyReturnTimestamp('POST', TEST_URL, {}, success, sinon.fake());
-                expect(success).to.have.been.called;
+                hmac.sendBodyReturnTimestamp(
+                    'POST',
+                    TEST_URL,
+                    {},
+                    done,
+                    function() { expect.fail('should have succeeded'); }
+                );
             });
 
-            it('should not call error on success', function() {
-                var success = sinon.fake();
-                var error = sinon.fake();
-                ajaxStub.callsFake(function() { success(); });
+            it('should call error on error', function(done) {
+                ajaxStub.rejects();
 
-                hmac.sendQueryReturnTimestamp('POST', TEST_URL, {}, success, error);
-                expect(error).to.not.have.been.called;
-            });
-
-            it('should call error on error', function() {
-                var error = sinon.fake();
-                ajaxStub.callsFake(function() { error(); });
-
-                hmac.sendQueryReturnTimestamp('POST', TEST_URL, {}, sinon.fake(), error);
-                expect(error).to.have.been.called;
-            });
-
-            it('should not call success on error', function() {
-                var success = sinon.fake();
-                var error = sinon.fake();
-                ajaxStub.callsFake(function() { error(); });
-
-                hmac.sendQueryReturnTimestamp('POST', TEST_URL, {}, success, error);
-                expect(success).to.not.have.been.called;
+                hmac.sendBodyReturnTimestamp(
+                    'POST',
+                    TEST_URL,
+                    {}, 
+                    function() { expect.fail('should have errored'); },
+                    function() { done(); }
+                );
             });
         });
 

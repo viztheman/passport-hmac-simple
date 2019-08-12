@@ -18,7 +18,7 @@ function amendAuthReq(req) {
 
     req = Object.assign(req, {
         method: 'GET',
-        originalUrl: '/test/failure?timestamp=' + timestamp.valueOf().toString(),
+        href: () => '/test/failure?timestamp=' + timestamp.valueOf().toString(),
         query: {}
     });
     req.query.timestamp = timestamp.valueOf().toString();
@@ -32,7 +32,7 @@ function createAuthHeader(req) {
         '',
         '',
         new Date(req.query.timestamp).toUTCString(),
-        req.originalUrl
+        req.href()
     ].join('\n');
 
     let hash = crypto.createHmac('sha1', PRIVATE_KEY).update(sig).digest('hex');
@@ -54,7 +54,7 @@ describe('Strategy', () => {
                         done();
                     })
                     .req(req => req.headers.authorization = BAD_AUTH_HEADER)
-                    .authenticate();
+                    .authenticate({publicKey: PUBLIC_KEY});
             });
 
             it('should call this.fail for bad auth header', () => {
